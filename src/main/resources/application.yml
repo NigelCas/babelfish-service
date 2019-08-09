@@ -1,0 +1,10 @@
+server:
+  servlet:
+    context-path: /babelfish-service
+spring:
+  application:
+    name: babelfish-service
+
+logging:
+  level:
+    ROOT: INFO
