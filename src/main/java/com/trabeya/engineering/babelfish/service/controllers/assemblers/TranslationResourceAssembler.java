@@ -3,20 +3,20 @@ package com.trabeya.engineering.babelfish.service.controllers.assemblers;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.*;
 
 import com.trabeya.engineering.babelfish.service.controllers.TranslationController;
-import com.trabeya.engineering.babelfish.service.model.TranslationRequest;
+import com.trabeya.engineering.babelfish.service.model.TranslationModel;
 import org.springframework.hateoas.Resource;
 import org.springframework.hateoas.ResourceAssembler;
 import org.springframework.stereotype.Component;
 
 @Component
 public
-class TranslationResourceAssembler implements ResourceAssembler<TranslationRequest, Resource<TranslationRequest>> {
+class TranslationResourceAssembler implements ResourceAssembler<TranslationModel, Resource<TranslationModel>> {
 
     @Override
-    public Resource<TranslationRequest> toResource(TranslationRequest employee) {
+    public Resource<TranslationModel> toResource(TranslationModel translation) {
 
-        return new Resource<>(employee,
-                linkTo(methodOn(TranslationController.class).one(employee.getId())).withSelfRel(),
-                linkTo(methodOn(TranslationController.class).all()).withRel("employees"));
+        return new Resource<>(translation,
+                linkTo(methodOn(TranslationController.class).one(translation.getId())).withSelfRel(),
+                linkTo(methodOn(TranslationController.class).all()).withRel("translations"));
     }
 }
