@@ -1,6 +1,6 @@
 package com.trabeya.engineering.babelfish.service.model;
 
-public enum TranslationStatus {
+public enum Status {
     IN_PROGRESS,
     COMPLETED,
     FAILED;

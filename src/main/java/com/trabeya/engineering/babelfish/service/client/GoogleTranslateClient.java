@@ -8,9 +8,12 @@ import com.google.cloud.translate.v3beta1.TranslationServiceClient;
 import com.trabeya.engineering.babelfish.service.exceptions.GoogleTranslationAPIException;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
 import java.util.Collections;
 import java.util.List;
 
+@Component
 @Data
 @Slf4j
 public class GoogleTranslateClient {
@@ -33,18 +36,22 @@ public class GoogleTranslateClient {
             String format,
             String sourceLanguageCode,
             String targetLanguageCode) {
+        Translation translation = null;
+        try {
+            // Instantiates a client
+            Translate translate = TranslateOptions.getDefaultInstance().getService();
 
-        // Instantiates a client
-        Translate translate = TranslateOptions.getDefaultInstance().getService();
-
-        // Translates some text into Russian
-        Translation translation =
-                translate.translate(
-                        text,
-                        Translate.TranslateOption.format(format),
-                        Translate.TranslateOption.sourceLanguage(sourceLanguageCode),
-                        Translate.TranslateOption.targetLanguage(targetLanguageCode));
-
+            // Translates some text
+            translation = translate.translate(
+                            text,
+                            Translate.TranslateOption.format(format),
+                            Translate.TranslateOption.sourceLanguage(sourceLanguageCode),
+                            Translate.TranslateOption.targetLanguage(targetLanguageCode));
+        }
+        catch (Exception ex ) {
+                log.error("translateTextV2 service exception : ", ex);
+                throw new GoogleTranslationAPIException(ex.getMessage());
+        }
         return translation.getTranslatedText();
     }
 
@@ -62,8 +69,8 @@ public class GoogleTranslateClient {
             // Detects some text
             List<Detection> detections = translate.detect(texts);
             detection = detections.get(0);
-            log.info("language detected :"+detection.getLanguage());
-            log.info("language detection confidence factor : "+detection.getConfidence()*100);
+            log.debug("language detected :" + detection.getLanguage()
+                    + " with confidence factor :" + detection.getConfidence() * 100);
         }
         catch (Exception ex ) {
             log.error("detectTextLangV2 service exception : ", ex);
@@ -72,17 +79,40 @@ public class GoogleTranslateClient {
         return detection;
     }
 
+    /**
+     * Translates a given text list to a target language using v2 API.
+     *
+     * @param texts - Text list for detection.
+     */
+    public List<Detection> detectTextLangV2(List<String> texts) {
+        List<Detection> detectionList = null;
+        try {
+            // Instantiates a client
+            Translate translate = TranslateOptions.getDefaultInstance().getService();
+            // Detects some text
+            detectionList = translate.detect(texts);
+            for (Detection detection : detectionList) {
+                log.debug("language detected :" + detection.getLanguage()
+                        + " with confidence factor :" + detection.getConfidence() * 100);
+            }
+        }
+        catch (Exception ex ) {
+            log.error("detectTextLangV2 service exception : ", ex);
+            throw new GoogleTranslationAPIException(ex.getMessage());
+        }
+        return detectionList;
+    }
+
 
     /**
      * Fetches list of languages supported by using v2 API.
      */
-    public List<Language> listSupportedLanguagesV2() {
+    private List<Language> listSupportedLanguagesV2() {
         List<Language> supportedList;
         try {
         // Instantiates a client
         Translate translate = TranslateOptions.getDefaultInstance().getService();
-            supportedList =
-                translate.listSupportedLanguages();
+        supportedList = translate.listSupportedLanguages();
         log.info("Supported no. of languages :"+supportedList.size());
         }
         catch (Exception ex ) {

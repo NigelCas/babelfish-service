@@ -16,7 +16,7 @@ class TranslationResourceAssembler implements ResourceAssembler<TranslationModel
     public Resource<TranslationModel> toResource(TranslationModel translation) {
 
         return new Resource<>(translation,
-                linkTo(methodOn(TranslationController.class).one(translation.getId())).withSelfRel(),
-                linkTo(methodOn(TranslationController.class).all()).withRel("translations"));
+                linkTo(methodOn(TranslationController.class).getTranslation(translation.getId())).withSelfRel(),
+                linkTo(methodOn(TranslationController.class).getAllTranslations()).withRel("translations"));
     }
 }

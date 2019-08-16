@@ -2,21 +2,33 @@ package com.trabeya.engineering.babelfish.service.model;
 
 import lombok.Data;
 import javax.persistence.*;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import java.io.Serializable;
 
 @Data
 @Entity
 @Table(name = "translation")
 public class TranslationModel {
-    private @Id @GeneratedValue(strategy = GenerationType.AUTO) Long id;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private  Long id;
+
+    @Column(name = "input_language")
     private String inputLanguage;
-    @NotBlank(message = "Must not be blank")
+
+    @Column(name = "output_language")
     private String outputLanguage;
-    private String outputFormat;
-    @NotBlank(message = "Must not be blank")
+
+    @Column(name = "translation_format")
+    @Enumerated(EnumType.STRING)
+    private TranslationOutputFormat outputFormat;
+
+    @Column(name = "input_text")
     private String inputText;
+
+    @Column(name = "output_text")
     private String outputText;
-    private TranslationStatus status;
+
+    @Column(name = "translation_status")
+    @Enumerated(EnumType.STRING)
+    private Status status;
 }
