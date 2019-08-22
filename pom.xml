@@ -14,10 +14,14 @@
     </parent>
     <packaging>jar</packaging>
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.8</java.version>
         <spring-cloud.version>Greenwich.SR2</spring-cloud.version>
+        <apache-tika.version>1.22</apache-tika.version>
+        <google-cloud.version>0.105.0-alpha</google-cloud.version>
     </properties>
     <dependencies>
+        <!-- Spring boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
@@ -61,6 +65,11 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.28.0</version>
+        </dependency>
         <!-- Swagger -->
         <dependency>
             <groupId>io.springfox</groupId>
@@ -78,6 +87,18 @@
             <version>2.9.2</version>
             <type>jar</type>
         </dependency>
+        <!-- Apache Tika -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${apache-tika.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers</artifactId>
+            <version>${apache-tika.version}</version>
+        </dependency>
+        <!-- Google Cloud -->
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-automl</artifactId>
@@ -116,7 +137,7 @@
             <dependency>
                 <groupId>com.google.cloud</groupId>
                 <artifactId>google-cloud-bom</artifactId>
-                <version>0.99.0-alpha</version>
+                <version>${google-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
