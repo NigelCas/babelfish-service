@@ -5,14 +5,14 @@ import com.google.cloud.texttospeech.v1.AudioEncoding;
 import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
 import com.google.cloud.texttospeech.v1.Voice;
 import com.trabeya.engineering.babelfish.client.GoogleTextToSpeechClient;
-import com.trabeya.engineering.babelfish.controllers.dtos.NewTextToSpeechSynthesis;
-import com.trabeya.engineering.babelfish.controllers.dtos.TextToSpeechSupportedVoice;
+import com.trabeya.engineering.babelfish.controllers.dtos.NewTextToSpeechSynthesisDto;
+import com.trabeya.engineering.babelfish.controllers.dtos.TextToSpeechSupportedVoiceDto;
 import com.trabeya.engineering.babelfish.exceptions.TextToSpeechSynthesisFailedException;
 import com.trabeya.engineering.babelfish.exceptions.TextToSpeechSynthesisNotFoundException;
-import com.trabeya.engineering.babelfish.model.AudioFileMetaDataModel;
+import com.trabeya.engineering.babelfish.model.AudioFileMetaData;
 import com.trabeya.engineering.babelfish.model.Status;
 import com.trabeya.engineering.babelfish.model.TextToSpeechSynthesisDeviceProfile;
-import com.trabeya.engineering.babelfish.model.TextToSpeechSynthesisModel;
+import com.trabeya.engineering.babelfish.model.TextToSpeechSynthesis;
 import com.trabeya.engineering.babelfish.repository.AudioFileMetaDataRepository;
 import com.trabeya.engineering.babelfish.repository.TextToSpeechSynthesisRepository;
 import com.trabeya.engineering.babelfish.service.CloudStorageService;
@@ -37,7 +37,7 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
 
 @SuppressWarnings("WeakerAccess")
-@RequestMapping("/babelfish/synthesis/text_to_speech")
+@RequestMapping("/babelfish/text_to_speech")
 @RestController
 @Slf4j
 public class TextToSpeechController {
@@ -74,23 +74,23 @@ public class TextToSpeechController {
     }
 
     @GetMapping("/support/voices")
-    public Resources<Resource<TextToSpeechSupportedVoice>> getAllSupportedV1Voices() {
-        List<Resource<TextToSpeechSupportedVoice>> voices = new ArrayList<>();
+    public Resources<Resource<TextToSpeechSupportedVoiceDto>> getAllSupportedV1Voices() {
+        List<Resource<TextToSpeechSupportedVoiceDto>> voices = new ArrayList<>();
         for (Voice voice : textToSpeechClient.listAllSupportedVoicesV1()) {
-            TextToSpeechSupportedVoice supportedVoice = new TextToSpeechSupportedVoice();
+            TextToSpeechSupportedVoiceDto supportedVoice = new TextToSpeechSupportedVoiceDto();
             supportedVoice.setLanguageCodes(voice.getLanguageCodesList().toArray());
             supportedVoice.setName(voice.getName());
             supportedVoice.setSsmlGender(voice.getSsmlGender());
             supportedVoice.setNaturalSampleRateHertz(voice.getNaturalSampleRateHertz());
-            Resource<TextToSpeechSupportedVoice> languageResource = new Resource<>(supportedVoice);
+            Resource<TextToSpeechSupportedVoiceDto> languageResource = new Resource<>(supportedVoice);
             voices.add(languageResource);
         }
         return new Resources<>(voices);
     }
 
     @GetMapping("/synthesization/{id}")
-    public Resource<TextToSpeechSynthesisModel> getTextToSpeechSynthesization(@PathVariable Long id) {
-        TextToSpeechSynthesisModel synthesization = synthesisRepository.findById(id)
+    public Resource<TextToSpeechSynthesis> getTextToSpeechSynthesization(@PathVariable Long id) {
+        TextToSpeechSynthesis synthesization = synthesisRepository.findById(id)
                 .orElseThrow(() -> new TextToSpeechSynthesisNotFoundException(id));
         return new Resource<>(synthesization,
                 linkTo(methodOn(TextToSpeechController.class).getTextToSpeechSynthesization(id)).withSelfRel(),
@@ -100,8 +100,8 @@ public class TextToSpeechController {
 
 
     @GetMapping("/synthesizations")
-    public Resources<Resource<TextToSpeechSynthesisModel>> getAllTextToSpeechSynthesizations() {
-        List<Resource<TextToSpeechSynthesisModel>> synthesizations = synthesisRepository.findAll().stream()
+    public Resources<Resource<TextToSpeechSynthesis>> getAllTextToSpeechSynthesizations() {
+        List<Resource<TextToSpeechSynthesis>> synthesizations = synthesisRepository.findAll().stream()
                 .map(synthesization -> new Resource<>(synthesization,
                         linkTo(methodOn(TextToSpeechController.class)
                                 .getTextToSpeechSynthesization(synthesization.getId())).withSelfRel(),
@@ -113,9 +113,9 @@ public class TextToSpeechController {
     }
 
     @PostMapping("/synthesizations")
-    public ResponseEntity<byte[]> newSynthesization(@RequestBody @Valid NewTextToSpeechSynthesis synthesization) {
+    public ResponseEntity<byte[]> newSynthesization(@RequestBody @Valid NewTextToSpeechSynthesisDto synthesization) {
         ResponseEntity<byte[]> responseEntity;
-        TextToSpeechSynthesisModel inProgressSynthesis = new TextToSpeechSynthesisModel();
+        TextToSpeechSynthesis inProgressSynthesis = new TextToSpeechSynthesis();
         inProgressSynthesis.setStatus(Status.IN_PROGRESS);
         byte[] audioResource = new byte[0];
         try{
@@ -177,7 +177,7 @@ public class TextToSpeechController {
             }
 
             // Get Audio metadata
-            inProgressSynthesis.setAudioMetaData(
+            inProgressSynthesis.setDetectedAudioMetaData(
                     audioFileMetaDataRepository.save(getAudioMetaDataFromFile(audioResource)));
 
             String fileUUID = UUID.randomUUID().toString();
@@ -186,10 +186,6 @@ public class TextToSpeechController {
             if(synthesization.getAudioEncoding().equals(AudioEncoding.LINEAR16)) {
                 filename = fileUUID+".wav";
                 fileContentType = "audio/wav";
-
-                // Save audio to cloud storage
-                cloudStorageService.uploadSynthesisOutputToBucket(
-                        inProgressSynthesis, filename, fileContentType, audioResource);
 
                 // Return output audio file
                 String[] subType = fileContentType.split(Pattern.quote("/"));
@@ -236,8 +232,8 @@ public class TextToSpeechController {
                 throw new TextToSpeechSynthesisFailedException(synthesization);
             }
 
-            // Commit & Push changes to storage before Async processes
-            synthesisRepository.saveAndFlush(inProgressSynthesis);
+            // Commit changes to storage before Async processes
+            synthesisRepository.save(inProgressSynthesis);
 
             // Save audio to cloud storage
             cloudStorageService.uploadSynthesisOutputToBucket(
@@ -260,15 +256,9 @@ public class TextToSpeechController {
         return responseEntity;
     }
 
-    private AudioFileMetaDataModel getAudioMetaDataFromFile(byte[] fileContent) {
-        AudioFileMetaDataModel modelMetaData = new AudioFileMetaDataModel();
-        Metadata metadata = AudioFileMetaDataUtil.listAudioMetaDataFromBytes(fileContent);
-        modelMetaData.setTitle("Title");
-        modelMetaData.setAuthor(metadata.get("Author"));
-        modelMetaData.setChannels(metadata.get("channels"));
-        modelMetaData.setContentType(metadata.get("Content-Type"));
-        modelMetaData.setEncoderVersion(metadata.get("version"));
-        modelMetaData.setSampleRate(metadata.get("samplerate"));
+    private AudioFileMetaData getAudioMetaDataFromFile(byte[] fileContent) {
+        AudioFileMetaData modelMetaData = new AudioFileMetaData();
+        AudioFileMetaDataUtil.listAudioMetaDataFromBytes(fileContent, modelMetaData);
         return modelMetaData;
     }
 

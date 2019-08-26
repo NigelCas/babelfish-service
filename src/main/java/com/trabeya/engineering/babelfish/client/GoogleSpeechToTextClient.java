@@ -8,6 +8,7 @@ import com.google.cloud.speech.v1.RecognitionConfig.*;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.ByteString;
 import com.trabeya.engineering.babelfish.exceptions.GoogleTextToSpeechSynthesisAPIException;
+import com.trabeya.engineering.babelfish.model.SpeechToTextStreamingModel;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -17,13 +18,112 @@ import java.util.List;
 @Component
 @Data
 @Slf4j
-public class GoogleSpeechToText {
+public class GoogleSpeechToTextClient {
 
     private ResponseApiStreamingObserver<StreamingRecognizeResponse> responseObserver;
 
-    private GoogleSpeechToText() {
+    private GoogleSpeechToTextClient() {
         responseObserver = new ResponseApiStreamingObserver<>();
     }
+
+    /**
+     * Performs speech recognition on raw audio and prints the transcription.
+     *
+     * @param uploadedFileData the raw data from audio file to transcribe.
+     */
+    public void syncRecognizeFileV1(byte[] uploadedFileData,
+                                           AudioEncoding audioEncoding,
+                                           String languageCodes,
+                                           int sampleRateHertz,
+                                           SpeechToTextStreamingModel model,
+                                           List<String> commonSpeechHints,
+                                           boolean profanityFilterEnabled,
+                                           boolean modelEnhancementEnabled
+                                           )  {
+        try (SpeechClient speech = SpeechClient.create()) {
+
+            // Convert raw bytes to Base64 encoded byte string
+            ByteString audioBytes = ByteString.copyFrom(uploadedFileData);
+
+            // Add helpful speech hints to increase accuracy
+            SpeechContext sc = SpeechContext.newBuilder()
+                    .addAllPhrases(commonSpeechHints)
+                    .build();
+
+            // Configure request with local raw audio
+            RecognitionConfig config =
+                    RecognitionConfig.newBuilder()
+                            .setEncoding(audioEncoding)
+                            .setLanguageCode(languageCodes)
+                            .setSampleRateHertz(sampleRateHertz)
+                            .setModel(model.toString().toLowerCase())
+                            .setSpeechContexts(0,sc)
+                            .setProfanityFilter(profanityFilterEnabled)
+                            .setUseEnhanced(modelEnhancementEnabled)
+                            .build();
+            RecognitionAudio audio = RecognitionAudio.newBuilder().setContent(audioBytes).build();
+
+            // Use blocking call to get audio transcript
+            RecognizeResponse response = speech.recognize(config, audio);
+            List<SpeechRecognitionResult> results = response.getResultsList();
+
+            for (SpeechRecognitionResult result : results) {
+                // There can be several alternative transcripts for a given chunk of speech. Just use the
+                // first (most likely) one here.
+                SpeechRecognitionAlternative alternative = result.getAlternativesList().get(0);
+                log.debug(String.format("Transcription: %s%n", alternative.getTranscript()));
+            }
+        }
+        catch (Exception ex) {
+            log.error("syncRecognizeFileV1 service exception : ", ex);
+            throw new GoogleTextToSpeechSynthesisAPIException(ex.getMessage());
+        }
+    }
+
+
+    /**
+     * Performs speech recognition on remote file and prints the transcription.
+     *
+     * @param gcsUri the path to the remote audio file to transcribe.
+     */
+    public void syncRecognizeGcsV1(String gcsUri,
+                                   AudioEncoding audioEncoding,
+                                   String languageCodes,
+                                   int sampleRateHertz,
+                                   SpeechToTextStreamingModel model,
+                                   List<String> commonSpeechHints,
+                                   boolean profanityFilterEnabled,
+                                   boolean modelEnhancementEnabled) {
+
+        // Instantiates a client with GOOGLE_APPLICATION_CREDENTIALS
+        try (SpeechClient speech = SpeechClient.create()) {
+
+            // Builds the request for remote file
+            RecognitionConfig config =
+                    RecognitionConfig.newBuilder()
+                            .setEncoding(audioEncoding)
+                            .setLanguageCode(languageCodes)
+                            .setSampleRateHertz(sampleRateHertz)
+                            .build();
+            RecognitionAudio audio = RecognitionAudio.newBuilder().setUri(gcsUri).build();
+
+            // Use blocking call for getting audio transcript
+            RecognizeResponse response = speech.recognize(config, audio);
+            List<SpeechRecognitionResult> results = response.getResultsList();
+
+            for (SpeechRecognitionResult result : results) {
+                // There can be several alternative transcripts for a given chunk of speech. Just use the
+                // first (most likely) one here.
+                SpeechRecognitionAlternative alternative = result.getAlternativesList().get(0);
+                System.out.printf("Transcription: %s%n", alternative.getTranscript());
+            }
+        }
+        catch (Exception ex) {
+            log.error("syncRecognizeGcsV1 service exception : ", ex);
+            throw new GoogleTextToSpeechSynthesisAPIException(ex.getMessage());
+        }
+    }
+
 
     /**
      * Performs non-blocking speech recognition on remote audio file and prints the transcription.
@@ -34,17 +134,27 @@ public class GoogleSpeechToText {
                                 asyncRecognizeGcsV1Request(String gcsUri,
                                                     AudioEncoding audioEncoding,
                                                     String languageCodes,
-                                                    int sampleRateHertz) {
+                                                    int sampleRateHertz,
+                                                   SpeechToTextStreamingModel model,
+                                                    List<String> commonSpeechHints) {
         OperationFuture<LongRunningRecognizeResponse, LongRunningRecognizeMetadata> response;
+
         // Instantiates a client with GOOGLE_APPLICATION_CREDENTIALS
         try (SpeechClient speech = SpeechClient.create()) {
+
+            // Add helpful speech hints to increase accuracy
+            SpeechContext sc = SpeechContext.newBuilder()
+                    .addAllPhrases(commonSpeechHints)
+                    .build();
 
             // Configure remote file request for FLAC
             RecognitionConfig config =
                     RecognitionConfig.newBuilder()
                             .setEncoding(audioEncoding)
                             .setLanguageCode(languageCodes)
+                            .setSpeechContexts(0,sc)
                             .setSampleRateHertz(sampleRateHertz)
+                            .setModel(model.toString().toLowerCase())
                             .build();
             RecognitionAudio audio = RecognitionAudio.newBuilder().setUri(gcsUri).build();
 
@@ -90,10 +200,17 @@ public class GoogleSpeechToText {
             return finalTranscript.toString();
     }
 
+
+
     /**
      * Starts a streaming speech recognition on raw PCM local data.
      */
-    public ApiStreamObserver<StreamingRecognizeRequest> streamingRecognizeLocalInit() {
+    public ApiStreamObserver<StreamingRecognizeRequest> streamingRecognizeLocalV1Init(
+            AudioEncoding audioEncoding,
+            String languageCodes,
+            int sampleRateHertz,
+            SpeechToTextStreamingModel model
+    ) {
 
         ApiStreamObserver<StreamingRecognizeRequest> requestObserver;
         // Instantiates a client with GOOGLE_APPLICATION_CREDENTIALS
@@ -102,10 +219,10 @@ public class GoogleSpeechToText {
             // Configure request with local raw PCM audio
             RecognitionConfig recConfig =
                     RecognitionConfig.newBuilder()
-                            .setEncoding(AudioEncoding.LINEAR16)
-                            .setLanguageCode("en-US")
-                            .setSampleRateHertz(16000)
-                            .setModel("default")
+                            .setEncoding(audioEncoding)
+                            .setLanguageCode(languageCodes)
+                            .setSampleRateHertz(sampleRateHertz)
+                            .setModel(model.toString().toLowerCase())
                             .build();
             StreamingRecognitionConfig config =
                     StreamingRecognitionConfig.newBuilder().setConfig(recConfig).build();
@@ -116,7 +233,7 @@ public class GoogleSpeechToText {
             requestObserver = callable.bidiStreamingCall(responseObserver);
 
             // Throw Exception in case of stream failures
-            requestObserver.onError(new Exception("Stream failed to process"));
+            requestObserver.onError(new GoogleTextToSpeechSynthesisAPIException("Stream failed to process"));
 
             // The first request must **only** contain the audio configuration:
             requestObserver.onNext(
@@ -135,7 +252,7 @@ public class GoogleSpeechToText {
      * @param data byte array of audio file to transcribe.
      * @param requestObserver request passed from streamingRecognizeLocal_init()
      */
-    public void streamingRecognizeLocalEnQueue(
+    public void streamingRecognizeLocalV1EnQueue(
             ApiStreamObserver<StreamingRecognizeRequest> requestObserver,
             byte[] data){
 

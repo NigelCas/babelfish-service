@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: babelfish-service
+hibernate:
+  jdbc:
+    time-zone: UTC
 logging:
   level:
     ROOT: INFO

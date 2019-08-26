@@ -5,7 +5,7 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.trabeya.engineering.babelfish.client.GoogleCloudStorageClient;
 import com.trabeya.engineering.babelfish.exceptions.GoogleCloudStorageFailedException;
-import com.trabeya.engineering.babelfish.model.TextToSpeechSynthesisModel;
+import com.trabeya.engineering.babelfish.model.TextToSpeechSynthesis;
 import com.trabeya.engineering.babelfish.repository.TextToSpeechSynthesisRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +28,7 @@ public class CloudStorageService {
 
     @Async("threadPoolTaskExecutor")
     public void uploadSynthesisOutputToBucket
-            (TextToSpeechSynthesisModel synthesis, String fileUri, String contentType, byte[] fileContent) {
+            (TextToSpeechSynthesis synthesis, String fileUri, String contentType, byte[] fileContent) {
         try {
             CompletableFuture<Blob> futureFile =
                 CompletableFuture.supplyAsync(() ->
@@ -40,6 +40,11 @@ public class CloudStorageService {
                 log.info("Successfully uploaded synthesized audio, access link: " + blob.getMediaLink());
                 synthesis.setAudioFilename(blob.getName());
                 synthesis.setAudioFileUri(blob.getMediaLink());
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 synthesisRepository.save(synthesis);
                 return null;
             });
@@ -53,7 +58,7 @@ public class CloudStorageService {
 
     @Async("threadPoolTaskExecutor")
     public void uploadSynthesisInputsToBucket
-            (TextToSpeechSynthesisModel synthesis, String fileName, String contentType, byte[] fileContent) {
+            (TextToSpeechSynthesis synthesis, String fileName, String contentType, byte[] fileContent) {
         try {
             CompletableFuture<Blob> futureModel =
                 CompletableFuture.supplyAsync(() ->
@@ -66,7 +71,7 @@ public class CloudStorageService {
                 synthesis.setRemoteModelFilename(blob.getName());
                 synthesis.setRemoteModelUri(blob.getMediaLink());
                 try {
-                    Thread.sleep(3000);
+                    Thread.sleep(6000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

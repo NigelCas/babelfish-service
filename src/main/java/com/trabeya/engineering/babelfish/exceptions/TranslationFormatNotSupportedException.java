@@ -1,10 +1,10 @@
 package com.trabeya.engineering.babelfish.exceptions;
 
-import com.trabeya.engineering.babelfish.controllers.dtos.NewTranslation;
+import com.trabeya.engineering.babelfish.controllers.dtos.NewTranslationDto;
 
 public class TranslationFormatNotSupportedException extends RuntimeException {
 
-    public TranslationFormatNotSupportedException(NewTranslation request)
+    public TranslationFormatNotSupportedException(NewTranslationDto request)
     {
         super("Translation output format : " + request.getOutputFormat()+ " not supported");
     }

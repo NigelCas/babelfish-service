@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewTextToSpeechSynthesis {
+public class NewTextToSpeechSynthesisDto {
 
     @NotBlank(message = "Must not be blank")
     private String inputText;

@@ -4,9 +4,9 @@ import com.google.cloud.translate.Detection;
 import com.google.cloud.translate.Language;
 import com.trabeya.engineering.babelfish.client.GoogleTranslateClient;
 import com.trabeya.engineering.babelfish.controllers.assemblers.TranslationResourceAssembler;
-import com.trabeya.engineering.babelfish.controllers.dtos.NewTranslation;
+import com.trabeya.engineering.babelfish.controllers.dtos.NewTranslationDto;
 import com.trabeya.engineering.babelfish.exceptions.*;
-import com.trabeya.engineering.babelfish.model.TranslationModel;
+import com.trabeya.engineering.babelfish.model.Translation;
 import com.trabeya.engineering.babelfish.model.Status;
 import com.trabeya.engineering.babelfish.model.TranslationOutputFormat;
 import com.trabeya.engineering.babelfish.repository.TranslationRepository;
@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -57,9 +58,9 @@ public class TranslationController {
 
 
     @GetMapping("/translations/{id}")
-    public Resource<TranslationModel> getTranslation(@PathVariable Long id) {
+    public Resource<Translation> getTranslation(@PathVariable Long id) {
 
-        TranslationModel translation = translationRepository.findById(id)
+        Translation translation = translationRepository.findById(id)
                 .orElseThrow(() -> new TranslationNotFoundException(id));
 
         return new Resource<>(translation,
@@ -69,9 +70,9 @@ public class TranslationController {
 
 
     @GetMapping("/translations")
-    public Resources<Resource<TranslationModel>> getAllTranslations() {
+    public Resources<Resource<Translation>> getAllTranslations() {
 
-        List<Resource<TranslationModel>> translations = translationRepository.findAll().stream()
+        List<Resource<Translation>> translations = translationRepository.findAll().stream()
                 .map(employee -> new Resource<>(employee,
                         linkTo(methodOn(TranslationController.class).getTranslation(employee.getId())).withSelfRel(),
                         linkTo(methodOn(TranslationController.class).getAllTranslations()).withRel("translations")))
@@ -82,10 +83,10 @@ public class TranslationController {
     }
 
     @PostMapping("/translations")
-    public ResponseEntity<Resource<TranslationModel>> newTranslation(@RequestBody NewTranslation translation) {
+    public ResponseEntity<Resource<Translation>> newTranslation(@RequestBody @Valid NewTranslationDto translation) {
 
-        ResponseEntity<Resource<TranslationModel>> response = null;
-        TranslationModel inProgressTranslation = new TranslationModel();
+        ResponseEntity<Resource<Translation>> response = null;
+        Translation inProgressTranslation = new Translation();
         inProgressTranslation.setStatus(Status.IN_PROGRESS);
 
         try {
@@ -153,7 +154,7 @@ public class TranslationController {
         }
         finally {
             // return state of translation is committed to DB
-            Resource<TranslationModel> resource
+            Resource<Translation> resource
                     = translationResourceAssembler.toResource(translationRepository.save(inProgressTranslation));
             try {
                 response = ResponseEntity

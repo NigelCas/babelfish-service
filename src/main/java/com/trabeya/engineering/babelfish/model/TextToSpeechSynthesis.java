@@ -9,7 +9,7 @@ import javax.persistence.*;
 @Data
 @Entity
 @Table(name = "text_to_speech_synthesis")
-public class TextToSpeechSynthesisModel {
+public class TextToSpeechSynthesis {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -32,7 +32,7 @@ public class TextToSpeechSynthesisModel {
     @JoinTable(name = "output_audio_metadata", joinColumns = {
             @JoinColumn(name = "synthesis_id", referencedColumnName = "id")}, inverseJoinColumns = {
             @JoinColumn(name = "metadata_id", referencedColumnName = "id")})
-    private AudioFileMetaDataModel audioMetaData;
+    private AudioFileMetaData detectedAudioMetaData;
 
     @Column(name = "output_audio_uri")
     private String audioFileUri;

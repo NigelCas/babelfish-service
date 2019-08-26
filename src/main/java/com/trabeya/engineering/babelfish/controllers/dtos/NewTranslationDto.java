@@ -11,7 +11,7 @@ import javax.validation.constraints.NotNull;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewTranslation {
+public class NewTranslationDto {
 
     private String inputLanguage;
     @NotBlank(message = "Must not be blank")
