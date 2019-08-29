@@ -16,8 +16,12 @@ public class TextToSpeechSynthesis {
     private  Long id;
 
     @Lob
-    @Column(name = "input_text", length=512)
-    private String inputText;
+    @Column(name = "input_data", length=512)
+    private String inputData;
+
+    @Column(name = "input_data_type")
+    @Enumerated(EnumType.STRING)
+    private TextToSpeechTextType inputDataType;
 
     @Column(name = "remote_model")
     private String remoteModelFilename;
@@ -36,6 +40,9 @@ public class TextToSpeechSynthesis {
 
     @Column(name = "output_audio_uri")
     private String audioFileUri;
+
+    @Column(name = "voice_language_name")
+    private String voiceLanguageName;
 
     @Column(name = "voice_language_code")
     private String voiceLanguageCode;

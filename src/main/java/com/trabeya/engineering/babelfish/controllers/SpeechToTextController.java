@@ -1,12 +1,17 @@
 package com.trabeya.engineering.babelfish.controllers;
 
+import com.google.cloud.storage.Blob;
 import com.trabeya.engineering.babelfish.client.GoogleSpeechToTextClient;
 import com.trabeya.engineering.babelfish.controllers.dtos.NewSpeechToTextRemoteTranscriptionDto;
 import com.trabeya.engineering.babelfish.controllers.dtos.NewSpeechToTextTranscriptionDto;
+import com.trabeya.engineering.babelfish.exceptions.AudioDataValidationFailedException;
+import com.trabeya.engineering.babelfish.exceptions.AudioFileMetaDataException;
 import com.trabeya.engineering.babelfish.exceptions.TextToSpeechSynthesisNotFoundException;
+import com.trabeya.engineering.babelfish.model.AudioFileMetaData;
 import com.trabeya.engineering.babelfish.model.SpeechToTextTranscription;
 import com.trabeya.engineering.babelfish.repository.SpeechToTextTranscriptionRepository;
 import com.trabeya.engineering.babelfish.service.CloudStorageService;
+import com.trabeya.engineering.babelfish.util.AudioFileMetaDataUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.Resource;
@@ -15,6 +20,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
@@ -62,6 +69,9 @@ public class SpeechToTextController {
     @PostMapping("/transcription/short")
     public Resource<SpeechToTextTranscription> startNewShortAudioTranscription
             (@RequestBody() NewSpeechToTextRemoteTranscriptionDto transcription) {
+
+
+
         throw new UnsupportedOperationException();
     }
 
@@ -100,4 +110,42 @@ public class SpeechToTextController {
 //            (@PathVariable Long id){
 //
 //    }
+
+    private boolean isGcsRemoteFileValid(NewSpeechToTextRemoteTranscriptionDto transcriptionRequest){
+         boolean isDataValid = false;
+        try {
+            // Downloads from cloud storage and blocks till download is completed/failed
+            Blob downloadedBlob = (Blob) CompletableFuture.anyOf(
+                    cloudStorageService.downloadTranscriptionInputFromBucket(
+                            transcriptionRequest.getRemoteURI())).join();
+
+            AudioFileMetaData detectedMetaData =
+                AudioFileMetaDataUtil.listAudioMetaDataFromBytes(downloadedBlob.getContent());
+
+//            switch (detectedMetaData.getContentType().toLowerCase()):
+//
+//            case
+
+
+            //  transcriptionRequest.getAudioEncoding().equals(detectedMetaData.get);
+
+        }
+        catch (CompletionException ex) {
+            log.error("Unable to complete Gcs download", ex);
+            throw new AudioDataValidationFailedException(ex.getMessage());
+        }
+        catch (AudioFileMetaDataException audEx) {
+            log.error("Unable to read audio metadata from Gcs download", audEx);
+            throw new AudioDataValidationFailedException(audEx.getMessage());
+        }
+        catch (Exception unEx) {
+            log.error("isGcsRemoteFileValid Unknown error : ", unEx);
+            throw new AudioDataValidationFailedException(unEx.getMessage());
+        }
+        return isDataValid;
+    }
+
+
 }
+
+

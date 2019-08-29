@@ -1,9 +1,11 @@
 package com.trabeya.engineering.babelfish.exceptions;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 
 import java.lang.reflect.Method;
 
+@Slf4j
 public class AsyncExceptionHandler implements AsyncUncaughtExceptionHandler {
     /**
      * Handle the given uncaught exception thrown from an asynchronous method.
@@ -14,10 +16,10 @@ public class AsyncExceptionHandler implements AsyncUncaughtExceptionHandler {
      */
     @Override
     public void handleUncaughtException(Throwable ex, Method method, Object... obj) {
-        System.out.println("Exception message - " + ex.getMessage());
-        System.out.println("Method name - " + method.getName());
+        log.error("Exception message - " + ex.getMessage());
+        log.error("Method name - " + method.getName());
         for (final Object param : obj) {
-            System.out.println("Param - " + param);
+            log.error("Param - " + param);
         }
     }
 }

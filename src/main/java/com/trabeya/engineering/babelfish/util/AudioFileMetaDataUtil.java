@@ -1,5 +1,6 @@
 package com.trabeya.engineering.babelfish.util;
 
+import com.trabeya.engineering.babelfish.exceptions.AudioFileMetaDataException;
 import com.trabeya.engineering.babelfish.model.AudioFileMetaData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
@@ -31,7 +32,8 @@ public class AudioFileMetaDataUtil {
         return tika.detect(stream);
     }
 
-    public static AudioFileMetaData listAudioMetaDataFromBytes(byte[] inputFileData, AudioFileMetaData modelMetaData){
+    public static AudioFileMetaData listAudioMetaDataFromBytes(byte[] inputFileData) {
+        AudioFileMetaData modelMetaData = new AudioFileMetaData();
         FileOutputStream fos = null;
         try {
             File tempFile = File.createTempFile("tmp", null, null);
@@ -75,13 +77,14 @@ public class AudioFileMetaDataUtil {
 
         } catch (Exception ex) {
             log.error("listMetaDataFromBytes error : ", ex);
+            throw new AudioFileMetaDataException(ex.getMessage());
         }
         finally {
             try {
                 assert fos != null;
                 fos.close();
             } catch (Exception e) {
-                log.error("listMetaDataFromBytes FileOutputStream error : ", e);
+                log.error("listMetaDataFromBytes FileOutputStream closing error : ", e);
             }
         }
         return modelMetaData;

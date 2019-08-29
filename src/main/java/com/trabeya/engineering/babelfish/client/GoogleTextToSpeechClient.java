@@ -66,20 +66,29 @@ public class GoogleTextToSpeechClient {
      *
      * @param text the raw text to be synthesized. (e.g., "Hello there!")
      */
-    public byte[] synthesizeTextV1(String text, String languageCode, SsmlVoiceGender gender,
-                                   AudioEncoding audioEncoding, TextToSpeechSynthesisDeviceProfile device,
-                                    double speakingRate, double pitch) {
+    public byte[] synthesizeSpeechV1(String text, boolean isSsml, String voiceName, String languageCode,
+                                     SsmlVoiceGender gender, AudioEncoding audioEncoding,
+                                     TextToSpeechSynthesisDeviceProfile device, double speakingRate, double pitch) {
         // Instantiates a client
         try (TextToSpeechClient textToSpeechClient = TextToSpeechClient.create()) {
-            // Set the text input to be synthesized
-            SynthesisInput input = SynthesisInput.newBuilder().setText(text).build();
+
+            // Set the text/ssml input to be synthesized
+            SynthesisInput input =
+            isSsml ? SynthesisInput.newBuilder().setSsml(text).build()
+                    : SynthesisInput.newBuilder().setText(text).build();
 
             // Build the voice request
             VoiceSelectionParams voice =
+            null!=voiceName ?
                     VoiceSelectionParams.newBuilder()
-                            .setLanguageCode(languageCode) // eg: languageCode = "en_us"
-                            .setSsmlGender(gender) // eg: ssmlVoiceGender = SsmlVoiceGender.FEMALE
-                            .build();
+                    .setLanguageCode(languageCode) // eg: languageCode = "en_us"
+                    .setSsmlGender(gender) // eg: ssmlVoiceGender = SsmlVoiceGender.FEMALE
+                    .setName(voiceName) // eg: Ssml Voice name = en-US-Standard-C
+                    .build() :
+                    VoiceSelectionParams.newBuilder()
+                    .setLanguageCode(languageCode) // eg: languageCode = "en_us"
+                    .setSsmlGender(gender) // eg: ssmlVoiceGender = SsmlVoiceGender.FEMALE
+                    .build();
 
             // Select the type of audio file you want returned
             AudioConfig audioConfig =
@@ -105,57 +114,6 @@ public class GoogleTextToSpeechClient {
         }
         catch (Exception ex ) {
             log.error("synthesizeTextV1 service exception : ", ex);
-            throw new GoogleTextToSpeechSynthesisAPIException(ex.getMessage());
-        }
-    }
-
-    /**
-     * Demonstrates using the Text to Speech client to synthesize text or ssml.
-     *
-     * <p>Note: ssml must be well-formed according to: (https://www.w3.org/TR/speech-synthesis/
-     * Example: <speak>Hello there.</speak>
-     *
-     * @param ssml the ssml document to be synthesized. (e.g., "<?xml...")
-     */
-    public byte[] synthesizeSsmlV1(String ssml, String languageCode, SsmlVoiceGender gender,
-                                 AudioEncoding audioEncoding, TextToSpeechSynthesisDeviceProfile device,
-                                   double speakingRate, double pitch) {
-        // Instantiates a client
-        try (TextToSpeechClient textToSpeechClient = TextToSpeechClient.create()) {
-            // Set the ssml input to be synthesized
-            SynthesisInput input = SynthesisInput.newBuilder().setSsml(ssml).build();
-
-            // Build the voice request
-            VoiceSelectionParams voice =
-                    VoiceSelectionParams.newBuilder()
-                            .setLanguageCode(languageCode) // eg: languageCode = "en_us"
-                            .setSsmlGender(gender) //eg: ssmlVoiceGender = SsmlVoiceGender.FEMALE
-                            .build();
-
-            // Select the type of audio file you want returned
-            AudioConfig audioConfig =
-                    AudioConfig.newBuilder()
-                            .setAudioEncoding(audioEncoding) // eg: MP3 audio.
-                            .setSpeakingRate(speakingRate)
-                            .setPitch(pitch)
-                            .addEffectsProfileId(device.toString()
-                                    .toLowerCase().replace("_","-")) // eg: audio profile
-                            .build();
-
-            // Perform the text-to-speech request
-            log.info("Text to audio synthesis initiated");
-            SynthesizeSpeechResponse response =
-                    textToSpeechClient.synthesizeSpeech(input, voice, audioConfig);
-
-            // Get the audio contents from the response
-            ByteString audioContents = response.getAudioContent();
-            log.info("Text to audio synthesis complete");
-
-            // Write the response to the output file.
-            return audioContents.toByteArray();
-        }
-        catch (Exception ex ) {
-            log.error("listAllSupportedVoicesV1 service exception : ", ex);
             throw new GoogleTextToSpeechSynthesisAPIException(ex.getMessage());
         }
     }

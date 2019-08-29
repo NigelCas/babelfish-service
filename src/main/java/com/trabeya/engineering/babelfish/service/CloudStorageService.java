@@ -86,7 +86,22 @@ public class CloudStorageService {
         }
     }
 
+    @Async("threadPoolTaskExecutor")
+    public CompletableFuture<Blob> downloadTranscriptionInputFromBucket(String fileUri) {
+        try {
+            return CompletableFuture.supplyAsync(() -> downloadFromCloudStorageBucket(fileUri));
+        }
+        catch (Exception ex) {
+            log.error("downloadTranscriptionInputFromBucket service error: ", ex);
+            throw new GoogleCloudStorageFailedException("Google cloud storage download failed : "
+                    +ex.getMessage());
+        }
+    }
 
+    private Blob downloadFromCloudStorageBucket(String fileGcsUri) {
+        return cloudStorageClient.downloadBlobFromBucketDirectory(
+                GOOGLE_CLOUD_STORAGE_BUCKET_NAME, fileGcsUri.split(GOOGLE_CLOUD_STORAGE_BUCKET_NAME)[1]);
+    }
 
 
     private Blob uploadToCloudStorageBucket(String fileUri, String contentType, byte[] fileContent) {
