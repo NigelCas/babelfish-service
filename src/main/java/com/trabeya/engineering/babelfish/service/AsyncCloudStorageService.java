@@ -3,7 +3,7 @@ package com.trabeya.engineering.babelfish.service;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
-import com.trabeya.engineering.babelfish.client.GoogleCloudStorageClient;
+import com.trabeya.engineering.babelfish.client.gcp.GoogleCloudStorageClient;
 import com.trabeya.engineering.babelfish.exceptions.GoogleCloudStorageFailedException;
 import com.trabeya.engineering.babelfish.model.TextToSpeechSynthesis;
 import com.trabeya.engineering.babelfish.repository.TextToSpeechSynthesisRepository;
@@ -18,7 +18,7 @@ import static com.trabeya.engineering.babelfish.Application.*;
 
 @Service
 @Slf4j
-public class CloudStorageService {
+public class AsyncCloudStorageService {
 
     @Autowired
     private TextToSpeechSynthesisRepository synthesisRepository;

@@ -1,4 +1,4 @@
-package com.trabeya.engineering.babelfish.client;
+package com.trabeya.engineering.babelfish.client.gcp;
 
 import com.google.cloud.translate.*;
 import com.google.cloud.translate.v3beta1.LocationName;
@@ -138,7 +138,7 @@ public class GoogleTranslateClient {
             log.info("Supported no. of languages :" + supportedList.size());
         }
         catch (Exception ex ) {
-            log.error("listSupportedLanguagesV2 service exception : ", ex);
+            log.error("listSupportedLanguagesV2 service exception, Target Language-code : "+targetLanguageCode, ex);
             throw new GoogleTranslationAPIException(ex.getMessage());
         }
         return supportedList;

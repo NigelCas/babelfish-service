@@ -2,9 +2,9 @@ package com.trabeya.engineering.babelfish.controllers;
 
 import com.google.cloud.translate.Detection;
 import com.google.cloud.translate.Language;
-import com.trabeya.engineering.babelfish.client.GoogleTranslateClient;
+import com.trabeya.engineering.babelfish.client.gcp.GoogleTranslateClient;
 import com.trabeya.engineering.babelfish.controllers.assemblers.TranslationResourceAssembler;
-import com.trabeya.engineering.babelfish.controllers.dtos.NewTranslationDto;
+import com.trabeya.engineering.babelfish.controllers.dtos.NewTranslationRequest;
 import com.trabeya.engineering.babelfish.exceptions.*;
 import com.trabeya.engineering.babelfish.model.Translation;
 import com.trabeya.engineering.babelfish.model.Status;
@@ -31,7 +31,7 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
 
 
 @SuppressWarnings("WeakerAccess")
-@RequestMapping("/babelfish/translator")
+@RequestMapping("/translator")
 @RestController
 @Slf4j
 public class TranslationController {
@@ -71,7 +71,6 @@ public class TranslationController {
 
     @GetMapping("/translations")
     public Resources<Resource<Translation>> getAllTranslations() {
-
         List<Resource<Translation>> translations = translationRepository.findAll().stream()
                 .map(employee -> new Resource<>(employee,
                         linkTo(methodOn(TranslationController.class).getTranslation(employee.getId())).withSelfRel(),
@@ -83,7 +82,7 @@ public class TranslationController {
     }
 
     @PostMapping("/translations")
-    public ResponseEntity<Resource<Translation>> newTranslation(@RequestBody @Valid NewTranslationDto translation) {
+    public ResponseEntity<Resource<Translation>> newTranslation(@RequestBody @Valid NewTranslationRequest translation) {
 
         ResponseEntity<Resource<Translation>> response = null;
         Translation inProgressTranslation = new Translation();

@@ -4,5 +4,6 @@ public enum SpeechToTextStreamingModel {
     COMMAND_AND_SEARCH,
     PHONE_CALL,
     VIDEO,
-    DEFAULT
+    DEFAULT,
+    NO_MODEL
 }

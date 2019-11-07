@@ -1,0 +1,31 @@
+body {
+	font-family: 'Allerta Stencil', sans-serif;
+	background-color: darkslategray;
+}
+
+.ui.header > .image:not(.icon):only-child, .ui.header > img:only-child {
+    margin-right: 0em;
+}
+
+
+h1.ui.center.header {
+	margin: 2em 0em 1em;
+	color: white;
+}
+
+h2.ui.center.header {
+	margin: 2em 0em 1em;
+}
+
+h3.ui.center.header {
+	margin-top: 1em;
+	padding: 2em 0em;
+}
+
+.ui.segments {
+	background-color: white;
+}
+
+audio {
+	width: 100%;
+}

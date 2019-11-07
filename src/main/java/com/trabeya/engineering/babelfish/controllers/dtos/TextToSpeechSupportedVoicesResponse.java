@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class TextToSpeechSupportedVoiceDto {
+public class TextToSpeechSupportedVoicesResponse {
 
     private Object[] languageCodes;
     private String name;

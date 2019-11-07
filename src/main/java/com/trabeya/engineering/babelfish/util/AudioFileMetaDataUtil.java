@@ -4,6 +4,9 @@ import com.trabeya.engineering.babelfish.exceptions.AudioFileMetaDataException;
 import com.trabeya.engineering.babelfish.model.AudioFileMetaData;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.sax.BodyContentHandler;
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.AudioHeader;
@@ -13,6 +16,8 @@ import org.jaudiotagger.audio.exceptions.ReadOnlyFileException;
 import org.jaudiotagger.audio.mp3.MP3AudioHeader;
 import org.jaudiotagger.audio.mp3.MP3File;
 import org.jaudiotagger.tag.TagException;
+import org.apache.tika.exception.TikaException;
+import org.xml.sax.SAXException;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -33,7 +38,7 @@ public class AudioFileMetaDataUtil {
     }
 
     public static AudioFileMetaData listAudioMetaDataFromBytes(byte[] inputFileData) {
-        AudioFileMetaData modelMetaData = new AudioFileMetaData();
+        AudioFileMetaData modelMetaData = null;
         FileOutputStream fos = null;
         try {
             File tempFile = File.createTempFile("tmp", null, null);
@@ -47,29 +52,37 @@ public class AudioFileMetaDataUtil {
                 case "audio/mpeg":
                     File tempFileMp3 = File.createTempFile("tmp", ".mp3", null);
                     Files.move(tempFile.toPath(), tempFileMp3.toPath(), REPLACE_EXISTING);
+                    modelMetaData = new AudioFileMetaData();
+                    modelMetaData.setContentType(detectedMime);
                     getMetaDataFromMP3File(tempFileMp3, modelMetaData);
                     break;
                 case "audio/flac":
                     File tempFileFlac = File.createTempFile("tmp", ".flac", null);
                     Files.move(tempFile.toPath(), tempFileFlac.toPath(), REPLACE_EXISTING);
+                    modelMetaData = new AudioFileMetaData();
+                    modelMetaData.setContentType(detectedMime);
                     getMetaDataFromAudioFile(tempFileFlac, modelMetaData);
                     break;
-                case "audio/ogg":
-                case "audio/opus":
-                    File tempFileOpus = File.createTempFile("tmp", ".opus", null);
-                    Files.move(tempFile.toPath(), tempFileOpus.toPath(), REPLACE_EXISTING);
-                    getMetaDataFromAudioFile(tempFileOpus, modelMetaData);
-                    break;
-                case "audio/speex":
-                    File tempFileSpeex = File.createTempFile("tmp", ".speex", null);
-                    Files.move(tempFile.toPath(), tempFileSpeex.toPath(), REPLACE_EXISTING);
-                    getMetaDataFromAudioFile(tempFileSpeex, modelMetaData);
-                    break;
+//                case "audio/ogg":
+//                case "audio/opus":
+//                    File tempFileOpus = File.createTempFile("tmp", ".opus", null);
+//                    Files.move(tempFile.toPath(), tempFileOpus.toPath(), REPLACE_EXISTING);
+//                    modelMetaData = new AudioFileMetaData();
+//                    getMetaDataFromAudioFile(tempFileOpus, modelMetaData);
+//                    break;
+//                case "audio/speex":
+//                    File tempFileSpeex = File.createTempFile("tmp", ".speex", null);
+//                    Files.move(tempFile.toPath(), tempFileSpeex.toPath(), REPLACE_EXISTING);
+//                    modelMetaData = new AudioFileMetaData();
+//                    getMetaDataFromAudioFile(tempFileSpeex, modelMetaData);
+//                    break;
                 case "audio/wave":
                 case "audio/wav":
                 case "audio/vnd.wave":
                     File tempFileWav = File.createTempFile("tmp", ".wav", null);
                     Files.move(tempFile.toPath(), tempFileWav.toPath(), REPLACE_EXISTING);
+                    modelMetaData = new AudioFileMetaData();
+                    modelMetaData.setContentType(detectedMime);
                     getMetaDataFromAudioFile(tempFileWav, modelMetaData);
                     break;
                 default : log.warn("Unsupported File Extension: "+detectedMime+", No metadata extracted!" ); break;
@@ -98,7 +111,7 @@ public class AudioFileMetaDataUtil {
             time = time.plusSeconds(Double.valueOf(audioHeader.getPreciseTrackLength()).longValue());
 
             modelMetaData.setTrackLengthIso(time);
-            modelMetaData.setContentType(audioHeader.getEncodingType());
+            modelMetaData.setContentTypeVersion(audioHeader.getEncodingType());
             modelMetaData.setChannels(audioHeader.getChannels());
             modelMetaData.setSampleRateHz(audioHeader.getSampleRate());
             modelMetaData.setBitRateKbps(audioHeader.getBitRate());
@@ -117,7 +130,7 @@ public class AudioFileMetaDataUtil {
             time = time.plusSeconds(Double.valueOf(audioHeader.getTrackLength()).longValue());
 
             modelMetaData.setTrackLengthIso(time);
-            modelMetaData.setContentType(audioHeader.getEncodingType());
+            modelMetaData.setContentTypeVersion(audioHeader.getEncodingType());
             modelMetaData.setChannels(audioHeader.getChannels());
             modelMetaData.setSampleRateHz(audioHeader.getSampleRate());
             modelMetaData.setBitRateKbps(audioHeader.getBitRate());
@@ -125,6 +138,16 @@ public class AudioFileMetaDataUtil {
         } catch (CannotReadException | ReadOnlyFileException | TagException
                 | IOException | InvalidAudioFrameException e) {
             log.error("getMetaDataFromAudioFile error : ", e);
+        }
+    }
+
+    private String parseExample(File file) throws IOException, SAXException, TikaException {
+        AutoDetectParser parser = new AutoDetectParser();
+        BodyContentHandler handler = new BodyContentHandler();
+        Metadata metadata = new Metadata();
+        try (InputStream stream = new FileInputStream(file)) {
+            parser.parse(stream, handler, metadata);
+            return handler.toString();
         }
     }
 }

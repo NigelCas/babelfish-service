@@ -2,6 +2,7 @@ package com.trabeya.engineering.babelfish.model;
 
 import com.google.cloud.speech.v1.RecognitionConfig.AudioEncoding;
 import lombok.Data;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 
@@ -11,7 +12,7 @@ import javax.persistence.*;
 public class SpeechToTextTranscription {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "remote_model")
@@ -36,9 +37,15 @@ public class SpeechToTextTranscription {
     @Column(name = "audio_sample_rate")
     private int sampleRate;
 
+    @Column(name = "speech_context_hints")
+    private String speechContextsHints;
+
     @Column(name = "audio_streaming_model")
     @Enumerated(EnumType.STRING)
     private SpeechToTextStreamingModel audioStreamingModel;
+
+    @Column(name = "separate_channel_recognition_enabled")
+    private boolean enableSeparateRecognitionPerChannel;
 
     @Column(name = "profanity_filter_enabled")
     private boolean isProfanityFilterEnabled;
@@ -52,7 +59,9 @@ public class SpeechToTextTranscription {
             @JoinColumn(name = "metadata_id", referencedColumnName = "id")})
     private AudioFileMetaData detectedAudioMetaData;
 
-    @Column(name = "output_transcription")
+    @Lob
+    @Type(type="text")
+    @Column(name = "output_transcription", columnDefinition="CLOB")
     private String outputTranscription;
 
     @Column(name = "transcription_status")

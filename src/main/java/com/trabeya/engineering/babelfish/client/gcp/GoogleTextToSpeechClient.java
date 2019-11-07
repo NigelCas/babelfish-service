@@ -1,4 +1,4 @@
-package com.trabeya.engineering.babelfish.client;
+package com.trabeya.engineering.babelfish.client.gcp;
 
 import com.google.cloud.texttospeech.v1.*;
 import com.google.protobuf.ByteString;

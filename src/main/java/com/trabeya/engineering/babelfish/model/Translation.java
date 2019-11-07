@@ -1,6 +1,7 @@
 package com.trabeya.engineering.babelfish.model;
 
 import lombok.Data;
+import org.hibernate.annotations.Type;
 import javax.persistence.*;
 
 @Data
@@ -9,7 +10,7 @@ import javax.persistence.*;
 public class Translation {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private  Long id;
 
     @Column(name = "input_language")
@@ -23,11 +24,13 @@ public class Translation {
     private TranslationOutputFormat outputFormat;
 
     @Lob
-    @Column(name = "input_text", length=512)
+    @Type(type="text")
+    @Column(name = "input_text", columnDefinition="CLOB")
     private String inputText;
 
     @Lob
-    @Column(name = "output_text", length=512)
+    @Type(type="text")
+    @Column(name = "output_text", columnDefinition="CLOB")
     private String outputText;
 
     @Column(name = "translation_status")

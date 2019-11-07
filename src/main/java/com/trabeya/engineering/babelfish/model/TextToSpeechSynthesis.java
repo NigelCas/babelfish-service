@@ -3,6 +3,7 @@ package com.trabeya.engineering.babelfish.model;
 import com.google.cloud.texttospeech.v1.AudioEncoding;
 import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
 import lombok.Data;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 
@@ -12,11 +13,12 @@ import javax.persistence.*;
 public class TextToSpeechSynthesis {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private  Long id;
 
     @Lob
-    @Column(name = "input_data", length=512)
+    @Type(type="text")
+    @Column(name = "input_data", columnDefinition="CLOB")
     private String inputData;
 
     @Column(name = "input_data_type")

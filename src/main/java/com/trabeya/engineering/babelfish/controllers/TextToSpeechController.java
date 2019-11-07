@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.texttospeech.v1.AudioEncoding;
 import com.google.cloud.texttospeech.v1.SsmlVoiceGender;
 import com.google.cloud.texttospeech.v1.Voice;
-import com.trabeya.engineering.babelfish.client.GoogleTextToSpeechClient;
-import com.trabeya.engineering.babelfish.controllers.dtos.NewSsmlToSpeechSynthesisDto;
-import com.trabeya.engineering.babelfish.controllers.dtos.NewTextToSpeechSynthesisDto;
-import com.trabeya.engineering.babelfish.controllers.dtos.TextToSpeechSupportedVoiceDto;
+import com.trabeya.engineering.babelfish.client.gcp.GoogleTextToSpeechClient;
+import com.trabeya.engineering.babelfish.controllers.dtos.NewSsmlToSpeechSynthesisRequest;
+import com.trabeya.engineering.babelfish.controllers.dtos.NewTextToSpeechSynthesisRequest;
+import com.trabeya.engineering.babelfish.controllers.dtos.TextToSpeechSupportedVoicesResponse;
 import com.trabeya.engineering.babelfish.exceptions.SsmlToSpeechSynthesisFailedException;
 import com.trabeya.engineering.babelfish.exceptions.SsmlToSpeechSynthesisSsmlInvalidException;
 import com.trabeya.engineering.babelfish.exceptions.TextToSpeechSynthesisFailedException;
@@ -15,7 +15,7 @@ import com.trabeya.engineering.babelfish.exceptions.TextToSpeechSynthesisNotFoun
 import com.trabeya.engineering.babelfish.model.*;
 import com.trabeya.engineering.babelfish.repository.AudioFileMetaDataRepository;
 import com.trabeya.engineering.babelfish.repository.TextToSpeechSynthesisRepository;
-import com.trabeya.engineering.babelfish.service.CloudStorageService;
+import com.trabeya.engineering.babelfish.service.AsyncCloudStorageService;
 import com.trabeya.engineering.babelfish.util.AudioFileMetaDataUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -36,7 +36,7 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
 
 @SuppressWarnings("WeakerAccess")
-@RequestMapping("/babelfish/text_to_speech")
+@RequestMapping("/text_to_speech")
 @RestController
 @Slf4j
 public class TextToSpeechController {
@@ -51,7 +51,7 @@ public class TextToSpeechController {
     private GoogleTextToSpeechClient textToSpeechClient;
 
     @Autowired
-    private CloudStorageService cloudStorageService;
+    private AsyncCloudStorageService asyncCloudStorageService;
 
     private static final String attachment  = "attachment; filename=\"";
 
@@ -74,15 +74,15 @@ public class TextToSpeechController {
     }
 
     @GetMapping("/support/voices")
-    public Resources<Resource<TextToSpeechSupportedVoiceDto>> getAllSupportedV1Voices() {
-        List<Resource<TextToSpeechSupportedVoiceDto>> voices = new ArrayList<>();
+    public Resources<Resource<TextToSpeechSupportedVoicesResponse>> getAllSupportedV1Voices() {
+        List<Resource<TextToSpeechSupportedVoicesResponse>> voices = new ArrayList<>();
         for (Voice voice : textToSpeechClient.getSupportedVoiceList()) {
-            TextToSpeechSupportedVoiceDto supportedVoice = new TextToSpeechSupportedVoiceDto();
+            TextToSpeechSupportedVoicesResponse supportedVoice = new TextToSpeechSupportedVoicesResponse();
             supportedVoice.setLanguageCodes(voice.getLanguageCodesList().toArray());
             supportedVoice.setName(voice.getName());
             supportedVoice.setSsmlGender(voice.getSsmlGender());
             supportedVoice.setNaturalSampleRateHertz(voice.getNaturalSampleRateHertz());
-            Resource<TextToSpeechSupportedVoiceDto> languageResource = new Resource<>(supportedVoice);
+            Resource<TextToSpeechSupportedVoicesResponse> languageResource = new Resource<>(supportedVoice);
             voices.add(languageResource);
         }
         return new Resources<>(voices);
@@ -114,7 +114,7 @@ public class TextToSpeechController {
 
     @PostMapping("/synthesizations/ssml")
     public ResponseEntity<byte[]> newSynthesizationSSML(
-            @ModelAttribute @Validated NewSsmlToSpeechSynthesisDto synthesization,
+            @ModelAttribute @Validated NewSsmlToSpeechSynthesisRequest synthesization,
             @RequestParam(value = "file", required = true) MultipartFile file) {
         ResponseEntity<byte[]> responseEntity;
         TextToSpeechSynthesis inProgressSynthesis = new TextToSpeechSynthesis();
@@ -226,13 +226,13 @@ public class TextToSpeechController {
             synthesisRepository.save(inProgressSynthesis);
 
             // Save audio to cloud storage
-            cloudStorageService.uploadSynthesisOutputToBucket(
+            asyncCloudStorageService.uploadSynthesisOutputToBucket(
                     inProgressSynthesis, filename, fileContentType, audioResource);
 
             // Save Model to cloud storage
             String modelName = fileUUID+".json";
             String modelContentType = "application/json";
-            cloudStorageService.uploadSynthesisInputsToBucket(
+            asyncCloudStorageService.uploadSynthesisInputsToBucket(
                     inProgressSynthesis, modelName,
                     modelContentType, new ObjectMapper().writeValueAsBytes(inProgressSynthesis));
 
@@ -249,8 +249,7 @@ public class TextToSpeechController {
 
 
     @PostMapping("/synthesizations")
-    public ResponseEntity<byte[]> newSynthesization(
-            @ModelAttribute @Validated NewTextToSpeechSynthesisDto synthesization) {
+    public ResponseEntity<byte[]> newSynthesization(@RequestBody @Validated NewTextToSpeechSynthesisRequest synthesization) {
         ResponseEntity<byte[]> responseEntity;
         TextToSpeechSynthesis inProgressSynthesis = new TextToSpeechSynthesis();
         inProgressSynthesis.setInputDataType(TextToSpeechTextType.TEXT);
@@ -261,6 +260,8 @@ public class TextToSpeechController {
             BeanUtils.copyProperties(synthesization, inProgressSynthesis);
             inProgressSynthesis = synthesisRepository.save(inProgressSynthesis);
             String byteUnit = " Bytes";
+
+            //
             if( (null!=synthesization.getAudioSpeakingRate())
                 && (null==synthesization.getPitch())) {
                 audioResource = textToSpeechSynthesizerService(synthesization,inProgressSynthesis,
@@ -355,13 +356,13 @@ public class TextToSpeechController {
             synthesisRepository.save(inProgressSynthesis);
 
             // Save audio to cloud storage
-            cloudStorageService.uploadSynthesisOutputToBucket(
+            asyncCloudStorageService.uploadSynthesisOutputToBucket(
                     inProgressSynthesis, filename, fileContentType, audioResource);
 
             // Save Model to cloud storage
             String modelName = fileUUID+".json";
             String modelContentType = "application/json";
-            cloudStorageService.uploadSynthesisInputsToBucket(
+            asyncCloudStorageService.uploadSynthesisInputsToBucket(
                             inProgressSynthesis, modelName,
                     modelContentType, new ObjectMapper().writeValueAsBytes(inProgressSynthesis));
 
@@ -375,7 +376,7 @@ public class TextToSpeechController {
         return responseEntity;
     }
 
-    private byte[] textToSpeechSynthesizerService(NewTextToSpeechSynthesisDto synthesization,
+    private byte[] textToSpeechSynthesizerService(NewTextToSpeechSynthesisRequest synthesization,
                                                   TextToSpeechSynthesis inProgressSynthesis,
                                                   double speakingRate, double pitch) {
         byte[] responseSpeech;
@@ -415,7 +416,7 @@ public class TextToSpeechController {
         return responseSpeech;
     }
 
-    private byte[] ssmlToSpeechSynthesizerService(String ssml, NewSsmlToSpeechSynthesisDto synthesization,
+    private byte[] ssmlToSpeechSynthesizerService(String ssml, NewSsmlToSpeechSynthesisRequest synthesization,
                                                   TextToSpeechSynthesis inProgressSynthesis,
                                                   double speakingRate, double pitch) {
         byte[] responseSpeech;

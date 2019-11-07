@@ -1,4 +1,4 @@
-package com.trabeya.engineering.babelfish.client;
+package com.trabeya.engineering.babelfish.client.gcp;
 
 import com.google.api.gax.paging.Page;
 import com.google.cloud.storage.*;
@@ -81,7 +81,7 @@ public class GoogleCloudStorageClient {
                 log.error("Download Failed, file not found: "+blobPath);
         }
         catch (Exception ex) {
-            log.error("getBlobInBucketDirectory service exception : ", ex);
+            log.error("downloadBlobFromBucketDirectory service exception : ", ex);
             throw new GoogleCloudStorageAPIException(ex.getMessage());
         }
         return blob;

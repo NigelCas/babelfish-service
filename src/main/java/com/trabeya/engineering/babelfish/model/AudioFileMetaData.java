@@ -11,7 +11,7 @@ import java.time.LocalTime;
 public class AudioFileMetaData {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "channels")
@@ -25,6 +25,9 @@ public class AudioFileMetaData {
 
     @Column(name = "content_type")
     private String contentType;
+
+    @Column(name = "content_type_version")
+    private String contentTypeVersion;
 
     @Basic
     @Column(name = "audio_length")

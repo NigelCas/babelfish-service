@@ -9,8 +9,7 @@ import org.springframework.hateoas.ResourceAssembler;
 import org.springframework.stereotype.Component;
 
 @Component
-public
-class TranslationResourceAssembler implements ResourceAssembler<Translation, Resource<Translation>> {
+public class TranslationResourceAssembler implements ResourceAssembler<Translation, Resource<Translation>> {
 
     @Override
     public Resource<Translation> toResource(Translation translation) {
