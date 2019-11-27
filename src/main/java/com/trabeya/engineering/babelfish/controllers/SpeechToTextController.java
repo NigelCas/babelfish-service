@@ -24,8 +24,8 @@ import com.trabeya.engineering.babelfish.util.AudioFileMetaDataUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.Resource;
-import org.springframework.hateoas.Resources;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.CollectionModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -44,8 +44,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 import com.trabeya.engineering.babelfish.controllers.websocket.dtos.NewRealTimeSpeechToTextV1TranscriptionDto;
-import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
-import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RequestMapping("/speech_to_text")
 @RestController
@@ -71,19 +71,19 @@ public class SpeechToTextController {
     private GcpSpeechToTextLanguageSupportPage gcpSpeechToTextLanguageSupportPage;
 
     @GetMapping("/transcription/support/audio/languages")
-    public Resources<Resource<SpeechToTextSupportedAudioLanguagesResponse>> gcpSpeechToTextSupportLanguages() {
-        List<Resource<SpeechToTextSupportedAudioLanguagesResponse>> languages = new ArrayList<>();
+    public CollectionModel<EntityModel<SpeechToTextSupportedAudioLanguagesResponse>> gcpSpeechToTextSupportLanguages() {
+        List<EntityModel<SpeechToTextSupportedAudioLanguagesResponse>> languages = new ArrayList<>();
         try {
             for (SpeechToTextSupportedAudioLanguagesResponse language :
                     gcpSpeechToTextLanguageSupportPage.getSupportedLanguageList()) {
-                Resource<SpeechToTextSupportedAudioLanguagesResponse> languageResource = new Resource<>(language);
+                EntityModel<SpeechToTextSupportedAudioLanguagesResponse> languageResource = new EntityModel<>(language);
                 languages.add(languageResource);
             }
         }
         catch(Exception ex) {
             throw new BabelFishServiceSystemException(ex.getMessage());
         }
-        return new Resources<>(languages);
+        return new CollectionModel<>(languages);
     }
 
     @PostMapping("/realtime/transcription/start")
@@ -100,7 +100,7 @@ public class SpeechToTextController {
 
 
     @GetMapping("/transcription/{id}")
-    public Resource<SpeechToTextTranscription> getTextToSpeechTranscription(@PathVariable Long id) {
+    public EntityModel<SpeechToTextTranscription> getTextToSpeechTranscription(@PathVariable Long id) {
         SpeechToTextTranscription transcription = null;
         try {
         transcription = speechToTextTranscriptionRepository.findById(id)
@@ -109,7 +109,7 @@ public class SpeechToTextController {
         catch(Exception ex) {
             throw new BabelFishServiceSystemException(ex.getMessage());
         }
-        return new Resource<>(transcription,
+        return new EntityModel<>(transcription,
                 linkTo(methodOn(SpeechToTextController.class).getTextToSpeechTranscription(id)).withSelfRel(),
                 linkTo(methodOn(SpeechToTextController.class).getAllTextToSpeechTranscriptions())
                         .withRel("speech-to-text-transcriptions"));
@@ -117,30 +117,30 @@ public class SpeechToTextController {
 
 
     @GetMapping("/transcriptions")
-    public Resources<Resource<SpeechToTextTranscription>> getAllTextToSpeechTranscriptions() {
-        List<Resource<SpeechToTextTranscription>> transcriptions =
+    public CollectionModel<EntityModel<SpeechToTextTranscription>> getAllTextToSpeechTranscriptions() {
+        List<EntityModel<SpeechToTextTranscription>> transcriptions =
                 speechToTextTranscriptionRepository.findAll().stream()
-                        .map(transcription -> new Resource<>(transcription,
+                        .map(transcription -> new EntityModel<>(transcription,
                                 linkTo(methodOn(SpeechToTextController.class)
                                         .getTextToSpeechTranscription(transcription.getId())).withSelfRel(),
                                 linkTo(methodOn(SpeechToTextController.class)
                                         .getAllTextToSpeechTranscriptions()).withRel("speech-to-text-transcriptions")))
                         .collect(Collectors.toList());
-        return new Resources<>(transcriptions,
+        return new CollectionModel<>(transcriptions,
                 linkTo(methodOn(TextToSpeechController.class).getAllTextToSpeechSynthesizations()).withSelfRel());
     }
 
     @PostMapping("/transcription/short")
-    public Resource<SpeechToTextTranscription> startNewShortAudioTranscription
+    public EntityModel<SpeechToTextTranscription> startNewShortAudioTranscription
             (@ModelAttribute @Validated NewSpeechToTextRemoteTranscriptionRequest transcription) {
         throw new UnsupportedOperationException();
     }
 
     @PostMapping("/transcription/v1/short/upload")
-    public ResponseEntity<Resource<SpeechToTextTranscription>> startNewLocalShortAudioTranscription
+    public ResponseEntity<EntityModel<SpeechToTextTranscription>> startNewLocalShortAudioTranscription
             (@RequestParam(value = "file", required = true) MultipartFile file,
              @ModelAttribute @Validated NewSpeechToTexV1TranscriptionRequest transcription) {
-        ResponseEntity<Resource<SpeechToTextTranscription>> transcriptionResponse = null;
+        ResponseEntity<EntityModel<SpeechToTextTranscription>> transcriptionResponse = null;
         try {
             SpeechToTextTranscription speechToTextTranscription = new SpeechToTextTranscription();
             speechToTextTranscription.setStatus(Status.IN_PROGRESS);
@@ -157,45 +157,46 @@ public class SpeechToTextController {
 
             // TODO commit model file to storage
             // return state of translation is committed to DB
-            Resource<SpeechToTextTranscription> resource
-                    = speechToTextSynthesisResourceAssembler.toResource(
+            EntityModel<SpeechToTextTranscription> resource
+                    = speechToTextSynthesisResourceAssembler.toModel(
                     speechToTextTranscriptionRepository.save(speechToTextTranscription));
 
             transcriptionResponse = ResponseEntity
-                    .created(new URI(resource.getId().expand().getHref()))
+                    .created(new URI(resource.getRequiredLink(
+                            "transcriptions").expand().getHref()))
                     .body(resource);
 
         } catch (IOException | URISyntaxException e) {
-            e.printStackTrace();
+            log.error("startNewLocalShortAudioTranscription() :", e);
         }
         return transcriptionResponse;
     }
 
     @PostMapping("/transcription/long")
-    public Resource<SpeechToTextTranscription> startNewLongAudioTranscription
+    public EntityModel<SpeechToTextTranscription> startNewLongAudioTranscription
             (@RequestBody() NewSpeechToTextRemoteTranscriptionRequest transcription) {
         throw new UnsupportedOperationException();
     }
 
 //    @PostMapping("/transcription/streaming/upload")
-//    public Resource<SpeechToTextTranscription> startNewFileStreamingTranscription
+//    public EntityModel<SpeechToTextTranscription> startNewFileStreamingTranscription
 //            (@RequestBody() NewSpeechToTexV1TranscriptionRequest transcription) {
 //
 //    @PostMapping("/transcription/streaming")
-//    public Resource<SpeechToTextTranscription> startNewFileStreamingTranscription
+//    public EntityModel<SpeechToTextTranscription> startNewFileStreamingTranscription
 //            (@RequestBody() NewSpeechToTexV1TranscriptionRequest transcription) {
 //
 //    }
 //
 //    @PutMapping("/transcription/streaming/{id}")
-//    public Resource<SpeechToTextTranscription> continueFileStreamingTranscription
+//    public EntityModel<SpeechToTextTranscription> continueFileStreamingTranscription
 //            (@PathVariable Long id,
 //            @RequestParam(value = "file", required = true) MultipartFile file) {
 //
 //    }
 //
 //    @GetMapping("/transcription/streaming/{id}")
-//    public Resource<SpeechToTextTranscription> stopFileStreamingTranscription
+//    public EntityModel<SpeechToTextTranscription> stopFileStreamingTranscription
 //            (@PathVariable Long id){
 //
 //    }

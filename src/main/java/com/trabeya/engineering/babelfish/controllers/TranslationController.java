@@ -13,24 +13,22 @@ import com.trabeya.engineering.babelfish.repository.TranslationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.Resource;
-import org.springframework.hateoas.Resources;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.CollectionModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
-import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
-
-@SuppressWarnings("WeakerAccess")
 @RequestMapping("/translator")
 @RestController
 @Slf4j
@@ -58,33 +56,34 @@ public class TranslationController {
 
 
     @GetMapping("/translations/{id}")
-    public Resource<Translation> getTranslation(@PathVariable Long id) {
+    public EntityModel<Translation> getTranslation(@PathVariable Long id) {
 
         Translation translation = translationRepository.findById(id)
                 .orElseThrow(() -> new TranslationNotFoundException(id));
 
-        return new Resource<>(translation,
+        return new EntityModel<>(translation,
                 linkTo(methodOn(TranslationController.class).getTranslation(id)).withSelfRel(),
                 linkTo(methodOn(TranslationController.class).getAllTranslations()).withRel("translations"));
     }
 
 
     @GetMapping("/translations")
-    public Resources<Resource<Translation>> getAllTranslations() {
-        List<Resource<Translation>> translations = translationRepository.findAll().stream()
-                .map(employee -> new Resource<>(employee,
+    public CollectionModel<EntityModel<Translation>> getAllTranslations() {
+        List<EntityModel<Translation>> translations = translationRepository.findAll().stream()
+                .map(employee -> new EntityModel<>(employee,
                         linkTo(methodOn(TranslationController.class).getTranslation(employee.getId())).withSelfRel(),
                         linkTo(methodOn(TranslationController.class).getAllTranslations()).withRel("translations")))
                 .collect(Collectors.toList());
 
-        return new Resources<>(translations,
+        return new CollectionModel<>(translations,
                 linkTo(methodOn(TranslationController.class).getAllTranslations()).withSelfRel());
     }
 
     @PostMapping("/translations")
-    public ResponseEntity<Resource<Translation>> newTranslation(@RequestBody @Valid NewTranslationRequest translation) {
+    public ResponseEntity<EntityModel<Translation>> newTranslation(
+            @RequestBody @Validated NewTranslationRequest translation) {
 
-        ResponseEntity<Resource<Translation>> response = null;
+        ResponseEntity<EntityModel<Translation>> response = null;
         Translation inProgressTranslation = new Translation();
         inProgressTranslation.setStatus(Status.IN_PROGRESS);
 
@@ -153,11 +152,11 @@ public class TranslationController {
         }
         finally {
             // return state of translation is committed to DB
-            Resource<Translation> resource
-                    = translationResourceAssembler.toResource(translationRepository.save(inProgressTranslation));
+            EntityModel<Translation> resource
+                    = translationResourceAssembler.toModel(translationRepository.save(inProgressTranslation));
             try {
                 response = ResponseEntity
-                        .created(new URI(resource.getId().expand().getHref()))
+                        .created(new URI(resource.getRequiredLink("translations").expand().getHref()))
                         .body(resource);
             } catch (URISyntaxException e) {
                 log.error("POST /babelfish/translator/translations service URI :", e);
@@ -167,26 +166,27 @@ public class TranslationController {
     }
 
     @GetMapping("/translations/support/languages")
-    public Resources<Resource<Language>> gcpSupportedLanguageList() {
+    public CollectionModel<EntityModel<Language>> gcpSupportedLanguageList() {
 
-        List<Resource<Language>> translations = new ArrayList<>();
-        for (Language language : googleTranslateClient.getListSupportedLanguagesV2()) {
-            Resource<Language> languageResource = new Resource<>(language);
+        List<EntityModel<Language>> translations = new ArrayList<>();
+        List<Language> languageList = googleTranslateClient.listSupportedLanguagesV2();
+        for (Language language : languageList) {
+            EntityModel<Language> languageResource = new EntityModel<>(language);
             translations.add(languageResource);
         }
-        return new Resources<>(translations);
+        return new CollectionModel<>(translations);
 
     }
 
     @GetMapping("/translations/support/languages/{code}")
-    public Resources<Resource<Language>> gcpSupportedLanguageList(@PathVariable String code) {
+    public CollectionModel<EntityModel<Language>> gcpSupportedLanguageList(@PathVariable String code) {
 
-        List<Resource<Language>> translations = new ArrayList<>();
+        List<EntityModel<Language>> translations = new ArrayList<>();
         for (Language language : googleTranslateClient.listSupportedLanguagesV2(code)) {
-            Resource<Language> languageResource = new Resource<>(language);
+            EntityModel<Language> languageResource = new EntityModel<>(language);
             translations.add(languageResource);
         }
-        return new Resources<>(translations);
+        return new CollectionModel<>(translations);
 
     }
 
@@ -209,7 +209,7 @@ public class TranslationController {
     private boolean isV2LanguageCodeValid(String code) {
         boolean result = false;
         if (StringUtils.hasText(code)) {
-            List<Language> languages = googleTranslateClient.getListSupportedLanguagesV2();
+            List<Language> languages = googleTranslateClient.listSupportedLanguagesV2();
             for (Language lang : languages) {
                 if (lang.getCode().equals(code)) {
                     result = true;
@@ -224,7 +224,7 @@ public class TranslationController {
     private boolean isV2LanguageNameValid(String name) {
         boolean result = false;
         if (StringUtils.hasText(name)) {
-            List<Language> languages = googleTranslateClient.getListSupportedLanguagesV2();
+            List<Language> languages = googleTranslateClient.listSupportedLanguagesV2();
             for (Language lang : languages) {
                 if (lang.getName().equalsIgnoreCase(name)) {
                     result = true;
@@ -237,7 +237,7 @@ public class TranslationController {
 
     private String getV2SupportedLanguageCode4Name(String name) {
         String result = null;
-        List<Language> languages = googleTranslateClient.getListSupportedLanguagesV2();
+        List<Language> languages = googleTranslateClient.listSupportedLanguagesV2();
         for (Language lang : languages) {
             if (lang.getName().equalsIgnoreCase(name)) {
                 result = lang.getCode();
@@ -249,7 +249,7 @@ public class TranslationController {
 
     private String getV2SupportedLanguageName4Code(String code) {
         String result = "";
-        List<Language> languages = googleTranslateClient.getListSupportedLanguagesV2();
+        List<Language> languages = googleTranslateClient.listSupportedLanguagesV2();
         for (Language lang : languages) {
             if (lang.getCode().equals(code)) {
                 result = lang.getName();

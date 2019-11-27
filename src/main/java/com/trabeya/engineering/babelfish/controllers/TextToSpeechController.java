@@ -20,8 +20,8 @@ import com.trabeya.engineering.babelfish.util.AudioFileMetaDataUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.Resource;
-import org.springframework.hateoas.Resources;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.CollectionModel;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,10 +32,9 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
-import static org.springframework.hateoas.mvc.ControllerLinkBuilder.methodOn;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
-@SuppressWarnings("WeakerAccess")
 @RequestMapping("/text_to_speech")
 @RestController
 @Slf4j
@@ -74,25 +73,25 @@ public class TextToSpeechController {
     }
 
     @GetMapping("/support/voices")
-    public Resources<Resource<TextToSpeechSupportedVoicesResponse>> getAllSupportedV1Voices() {
-        List<Resource<TextToSpeechSupportedVoicesResponse>> voices = new ArrayList<>();
+    public CollectionModel<EntityModel<TextToSpeechSupportedVoicesResponse>> getAllSupportedV1Voices() {
+        List<EntityModel<TextToSpeechSupportedVoicesResponse>> voices = new ArrayList<>();
         for (Voice voice : textToSpeechClient.getSupportedVoiceList()) {
             TextToSpeechSupportedVoicesResponse supportedVoice = new TextToSpeechSupportedVoicesResponse();
             supportedVoice.setLanguageCodes(voice.getLanguageCodesList().toArray());
             supportedVoice.setName(voice.getName());
             supportedVoice.setSsmlGender(voice.getSsmlGender());
             supportedVoice.setNaturalSampleRateHertz(voice.getNaturalSampleRateHertz());
-            Resource<TextToSpeechSupportedVoicesResponse> languageResource = new Resource<>(supportedVoice);
+            EntityModel<TextToSpeechSupportedVoicesResponse> languageResource = new EntityModel<>(supportedVoice);
             voices.add(languageResource);
         }
-        return new Resources<>(voices);
+        return new CollectionModel<>(voices);
     }
 
     @GetMapping("/synthesization/{id}")
-    public Resource<TextToSpeechSynthesis> getTextToSpeechSynthesization(@PathVariable Long id) {
+    public EntityModel<TextToSpeechSynthesis> getTextToSpeechSynthesization(@PathVariable Long id) {
         TextToSpeechSynthesis synthesization = synthesisRepository.findById(id)
                 .orElseThrow(() -> new TextToSpeechSynthesisNotFoundException(id));
-        return new Resource<>(synthesization,
+        return new EntityModel<>(synthesization,
                 linkTo(methodOn(TextToSpeechController.class).getTextToSpeechSynthesization(id)).withSelfRel(),
                 linkTo(methodOn(TextToSpeechController.class).getAllTextToSpeechSynthesizations())
                         .withRel("text-to-speech-synthesizations"));
@@ -100,15 +99,15 @@ public class TextToSpeechController {
 
 
     @GetMapping("/synthesizations")
-    public Resources<Resource<TextToSpeechSynthesis>> getAllTextToSpeechSynthesizations() {
-        List<Resource<TextToSpeechSynthesis>> synthesizations = synthesisRepository.findAll().stream()
-                .map(synthesization -> new Resource<>(synthesization,
+    public CollectionModel<EntityModel<TextToSpeechSynthesis>> getAllTextToSpeechSynthesizations() {
+        List<EntityModel<TextToSpeechSynthesis>> synthesizations = synthesisRepository.findAll().stream()
+                .map(synthesization -> new EntityModel<>(synthesization,
                         linkTo(methodOn(TextToSpeechController.class)
                                 .getTextToSpeechSynthesization(synthesization.getId())).withSelfRel(),
                         linkTo(methodOn(TextToSpeechController.class)
                                 .getAllTextToSpeechSynthesizations()).withRel("text-to-speech-synthesizations")))
                 .collect(Collectors.toList());
-        return new Resources<>(synthesizations,
+        return new CollectionModel<>(synthesizations,
                 linkTo(methodOn(TextToSpeechController.class).getAllTextToSpeechSynthesizations()).withSelfRel());
     }
 

@@ -18,13 +18,6 @@ import java.util.List;
 @Slf4j
 public class GoogleTranslateClient {
 
-    private List<Language> listSupportedLanguagesV2;
-
-    GoogleTranslateClient() {
-        // load supported language list on client creation
-        listSupportedLanguagesV2 = listSupportedLanguagesV2();
-    }
-
     /**
      * Translates a given text to a target language using v2 API.
      *
@@ -108,7 +101,7 @@ public class GoogleTranslateClient {
     /**
      * Fetches list of languages supported by using v2 API.
      */
-    private List<Language> listSupportedLanguagesV2() {
+    public List<Language> listSupportedLanguagesV2() {
         List<Language> supportedList;
         try {
         // Instantiates a client

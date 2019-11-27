@@ -17,11 +17,6 @@ public class GoogleTextToSpeechClient {
 
     private List<Voice> supportedVoiceList;
 
-    private GoogleTextToSpeechClient() {
-        // load supported voice list on client creation
-        supportedVoiceList = listAllSupportedVoicesV1();
-    }
-
     /**
      * Demonstrates using the Text to Speech client to list the client's supported voices.
      */
